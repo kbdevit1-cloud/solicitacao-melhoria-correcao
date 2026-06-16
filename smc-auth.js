@@ -132,13 +132,13 @@ function smcRenderLoginProfissional(){
       </div>
       <div class="smc-auth-panel">
         <h3>Entrar no SMC</h3>
-        <p>Entre, crie sua conta ou continue sem login. As permissões são liberadas automaticamente pelo perfil.</p>
+        <p>Entre no sistema ou crie uma conta em uma aba separada. As permissões são liberadas automaticamente pelo perfil.</p>
         <div class="smc-auth-form">
           <div class="smc-auth-field"><label>E-mail</label><input id="smcLoginEmail" type="email" placeholder="nome@globaleletronics.ind.br" autocomplete="email"></div>
           <div class="smc-auth-field"><label>Senha</label><input id="smcLoginSenha" type="password" placeholder="Digite sua senha" autocomplete="current-password"></div>
           <div class="smc-auth-actions">
             <button class="smc-login-btn" onclick="smcLogin()">Entrar</button>
-            <button class="smc-create-btn" onclick="smcCriarConta()">Criar conta</button>
+            <button class="smc-create-btn" onclick="smcAbrirCadastro()">Criar conta</button>
           </div>
           <button class="smc-public-btn" onclick="smcContinuarPublico()">Continuar sem login</button>
           <div class="smc-auth-msg" id="smcLoginMsg"></div>
@@ -157,6 +157,12 @@ function smcRenderSessao(){
   document.body.appendChild(pill);
 }
 
+function smcAbrirCadastro(){
+  const email = document.getElementById("smcLoginEmail")?.value.trim();
+  const destino = email ? `cadastro.html?email=${encodeURIComponent(email)}` : "cadastro.html";
+  window.open(destino, "_blank", "noopener,noreferrer");
+}
+
 async function smcLogin(){
   const email = document.getElementById("smcLoginEmail").value.trim();
   const password = document.getElementById("smcLoginSenha").value;
@@ -167,19 +173,6 @@ async function smcLogin(){
   const { error } = await smcAuthClient.auth.signInWithPassword({ email, password });
   if (error) { msg.textContent = smcMensagemAuth(error); msg.classList.add("err"); return; }
   msg.textContent = "Login realizado.";
-  msg.classList.add("ok");
-}
-
-async function smcCriarConta(){
-  const email = document.getElementById("smcLoginEmail").value.trim();
-  const password = document.getElementById("smcLoginSenha").value;
-  const msg = document.getElementById("smcLoginMsg");
-  msg.className = "smc-auth-msg";
-  if (!email || !password) { msg.textContent = "Informe e-mail e senha para criar a conta."; msg.classList.add("err"); return; }
-  msg.textContent = "Criando conta...";
-  const { data, error } = await smcAuthClient.auth.signUp({ email, password });
-  if (error) { msg.textContent = smcMensagemAuth(error); msg.classList.add("err"); return; }
-  msg.textContent = data?.session ? "Conta criada e login realizado." : "Conta criada. Se o sistema pedir confirmação, verifique o e-mail antes de entrar.";
   msg.classList.add("ok");
 }
 

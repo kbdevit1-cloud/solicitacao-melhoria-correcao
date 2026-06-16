@@ -5,7 +5,7 @@
     "dia_abertura": "Terça-feira",
     "hora_abertura": "10:03:59",
     "criado_em": "2026-06-16T13:04:00.734475+00:00",
-    "atualizado_em": "2026-06-16T13:04:13.327502+00:00",
+    "atualizado_em": "2026-06-16T13:04:21.213922+00:00",
     "nome": "teste",
     "area": "ADM",
     "setor_local": "teste",
@@ -18,7 +18,7 @@
     "solicitacao": "teste",
     "impacto": "Dificulta o processo",
     "observacoes": null,
-    "status": "Em análise",
+    "status": "Aguardando informação",
     "github_status": "Sincronizado no GitHub JSON",
     "possui_foto": false,
     "foto_base64": null

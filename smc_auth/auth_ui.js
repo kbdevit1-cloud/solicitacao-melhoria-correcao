@@ -1,4 +1,5 @@
 const SESSION_KEY = 'smc_auth_token';
+const CORPORATE_DOMAIN = '@globaleletronics.ind.br';
 
 function normalizeUsuario(raw) {
   let value = String(raw ?? '').trim().toLowerCase().replace(/\s+/g, '');
@@ -6,13 +7,45 @@ function normalizeUsuario(raw) {
   if (value.includes('@')) {
     const [local, ...domainParts] = value.split('@');
     const domain = '@' + domainParts.join('@');
-    if (domain !== '@globaleletronics.ind.br') {
+    if (domain !== CORPORATE_DOMAIN) {
       return { ok: false, message: 'Acesso bloqueado. Use apenas e-mail corporativo @globaleletronics.ind.br.' };
     }
     value = local;
   }
   if (!/^[a-z0-9._-]{2,80}$/.test(value)) return { ok: false, message: 'Usuário corporativo inválido.' };
   return { ok: true, usuario: value };
+}
+
+function cleanInput(value = '') {
+  const normalized = normalizeUsuario(value);
+  return normalized.ok ? normalized.usuario : '';
+}
+
+function injectAuthStyle() {
+  if (document.getElementById('smc-auth-style-fix')) return;
+  const style = document.createElement('style');
+  style.id = 'smc-auth-style-fix';
+  style.textContent = `
+    .auth-form input,
+    .auth-form input:-webkit-autofill,
+    .auth-form input:-webkit-autofill:hover,
+    .auth-form input:-webkit-autofill:focus,
+    .auth-form input:-webkit-autofill:active {
+      background: none !important;
+      background-color: transparent !important;
+      background-image: none !important;
+      box-shadow: none !important;
+      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+      color: #eaf2ff !important;
+      -webkit-text-fill-color: #eaf2ff !important;
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      caret-color: #eaf2ff !important;
+      transition: background-color 999999s ease-out 0s !important;
+    }
+    .auth-form input::placeholder { color: #8fa6c2 !important; }
+  `;
+  document.head.appendChild(style);
 }
 
 class SMCAuthUI {
@@ -27,13 +60,23 @@ class SMCAuthUI {
   clearSession() { sessionStorage.removeItem(SESSION_KEY); }
 
   showLogin(message = '') {
+    injectAuthStyle();
     this.root.innerHTML = `
       <section class="auth-shell">
         <div class="auth-card">
           <h1>Acesso interno</h1>
           <p>Digite apenas seu usuário corporativo.</p>
-          <form data-login-form autocomplete="off">
-            <input name="usuario" type="text" placeholder="Digite seu usuário corporativo" autocomplete="off" required>
+          <form data-login-form class="auth-form" autocomplete="off">
+            <input
+              name="usuario"
+              type="text"
+              placeholder="Digite seu usuário corporativo"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              style="background:none!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;-webkit-box-shadow:none!important;"
+              required>
+            <small>Exemplo: nome.sobrenome</small>
             <div data-msg>${message}</div>
             <button type="submit">Entrar</button>
             <button type="button" data-request>Solicitar acesso</button>
@@ -43,6 +86,7 @@ class SMCAuthUI {
 
     const form = this.root.querySelector('[data-login-form]');
     const msg = this.root.querySelector('[data-msg]');
+    form.usuario.value = '';
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const normalized = normalizeUsuario(form.usuario.value);
@@ -56,15 +100,25 @@ class SMCAuthUI {
   }
 
   showRequestAccess(initialUser = '') {
-    const normalized = normalizeUsuario(initialUser);
-    const userValue = normalized.ok ? normalized.usuario : '';
+    injectAuthStyle();
+    const userValue = cleanInput(initialUser);
     this.root.innerHTML = `
       <section class="auth-shell">
         <div class="auth-card">
           <h1>Solicitar acesso</h1>
-          <form data-request-form autocomplete="off">
+          <form data-request-form class="auth-form" autocomplete="off">
             <input name="nome" type="text" placeholder="Nome" required>
-            <input name="usuario" type="text" placeholder="Digite seu usuário corporativo" value="${userValue}" required>
+            <input
+              name="usuario"
+              type="text"
+              placeholder="Digite seu usuário corporativo"
+              value="${userValue}"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              style="background:none!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;-webkit-box-shadow:none!important;"
+              required>
+            <small>Exemplo: nome.sobrenome</small>
             <input name="setor" type="text" placeholder="Setor">
             <input name="observacao" type="text" placeholder="Motivo do acesso">
             <div data-msg></div>

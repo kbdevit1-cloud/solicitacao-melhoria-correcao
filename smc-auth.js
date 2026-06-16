@@ -1,6 +1,7 @@
 // SMC – System of Improvement and Correction
 // Base de login com Supabase Auth.
 // Perfis: master, admin e usuario.
+// Trigger: carregar tela de login no index v5.
 
 const SMC_SUPABASE_URL = "https://quqqcudiyhajbmtrebvr.supabase.co";
 const SMC_SUPABASE_KEY = "sb_publishable_X3m3BdRtfzaH4c12ehjkMw_VsqiZGJG";

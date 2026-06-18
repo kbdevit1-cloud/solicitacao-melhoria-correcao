@@ -29,16 +29,19 @@ function smcPodeGerenciarUsuarios(){ return smcPerfil === "master"; }
 function smcNormalizarUsuario(raw){
   let value = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
   if (!value) return { ok:false, message:"Informe seu e-mail corporativo." };
-  if (value.includes("@")) {
-    const [local, ...domainParts] = value.split("@");
-    const domain = "@" + domainParts.join("@");
-    if (domain !== SMC_DOMAIN) {
-      return { ok:false, message:"Acesso permitido apenas para e-mails corporativos da Global Eletronics." };
-    }
-    value = local;
+  if (!value.includes("@")) {
+    return { ok:false, message:"Informe o e-mail corporativo completo, incluindo @globaleletronics.ind.br." };
   }
-  if (!/^[a-z0-9._-]{2,80}$/.test(value)) return { ok:false, message:"Usuário corporativo inválido." };
-  return { ok:true, usuario:value, email:value + SMC_DOMAIN };
+  const parts = value.split("@");
+  if (parts.length !== 2) {
+    return { ok:false, message:"E-mail corporativo inválido." };
+  }
+  const [local, domain] = parts;
+  if ("@" + domain !== SMC_DOMAIN) {
+    return { ok:false, message:"Acesso permitido apenas para e-mails corporativos da Global Eletronics." };
+  }
+  if (!/^[a-z0-9._-]{2,80}$/.test(local)) return { ok:false, message:"E-mail corporativo inválido." };
+  return { ok:true, usuario:local, email:local + SMC_DOMAIN };
 }
 
 function smcMensagemAuth(error){
@@ -224,7 +227,7 @@ function smcRenderLoginProfissional(){
         <div><div class="smc-auth-kicker">SMC • Acesso seguro</div><h2>System of Improvement and Correction</h2><p>Canal de registro, acompanhamento e controle de melhorias, correções e ações internas.</p><div class="smc-auth-flow"><div><strong>Abrir chamado</strong><span>Registro rápido para fábrica, ADM ou outro setor.</span></div><div><strong>Solicitar acesso</strong><span>E-mail corporativo ainda não aprovado gera uma solicitação pendente.</span></div><div><strong>Gestão ADM</strong><span>Admins e masters aprovam tudo dentro da mesma janela.</span></div></div></div>
         <div class="smc-auth-foot">Domínio permitido: ${SMC_DOMAIN}</div>
       </div>
-      <div class="smc-auth-panel"><h3>Entrar no SMC</h3><p>Digite seu usuário corporativo ou e-mail completo. O sistema bloqueia domínio pessoal.</p><div class="smc-auth-form"><div class="smc-auth-field"><label for="smcLoginUsuario">Usuário ou e-mail corporativo</label><input id="smcLoginUsuario" type="text" placeholder="nome.sobrenome" autocomplete="off" autocapitalize="none" spellcheck="false"><small>Exemplo: nome.sobrenome ou nome.sobrenome${SMC_DOMAIN}</small></div><div class="smc-auth-field"><label for="smcLoginSenha">Senha</label><input id="smcLoginSenha" type="password" placeholder="Digite sua senha" autocomplete="current-password"></div><div class="smc-auth-actions"><button type="button" id="smcLoginBtn" class="smc-login-btn">Entrar</button><button type="button" id="smcCreateBtn" class="smc-create-btn">Solicitar acesso</button></div><button type="button" id="smcPublicBtn" class="smc-public-btn">Continuar sem login</button><div class="smc-auth-msg" id="smcLoginMsg"></div><div class="smc-auth-note"><strong>Segurança:</strong> e-mail corporativo não aprovado não entra direto. Ele fica aguardando aprovação de admin/master.</div></div></div>
+      <div class="smc-auth-panel"><h3>Entrar no SMC</h3><p>Digite seu e-mail corporativo completo. O sistema bloqueia domínio pessoal.</p><div class="smc-auth-form"><div class="smc-auth-field"><label for="smcLoginUsuario">E-mail corporativo</label><input id="smcLoginUsuario" type="email" placeholder="nome.sobrenome@globaleletronics.ind.br" autocomplete="email" autocapitalize="none" spellcheck="false"><small>Use o e-mail corporativo completo.</small></div><div class="smc-auth-field"><label for="smcLoginSenha">Senha</label><input id="smcLoginSenha" type="password" placeholder="Digite sua senha" autocomplete="current-password"></div><div class="smc-auth-actions"><button type="button" id="smcLoginBtn" class="smc-login-btn">Entrar</button><button type="button" id="smcCreateBtn" class="smc-create-btn">Solicitar acesso</button></div><button type="button" id="smcPublicBtn" class="smc-public-btn">Continuar sem login</button><div class="smc-auth-msg" id="smcLoginMsg"></div><div class="smc-auth-note"><strong>Segurança:</strong> e-mail corporativo não aprovado não entra direto. Ele fica aguardando aprovação de admin/master.</div></div></div>
     </section>`;
   document.body.appendChild(overlay);
   document.getElementById("smcAuthCloseBtn")?.addEventListener("click", smcContinuarPublico);
@@ -292,12 +295,12 @@ function smcFecharTelaInterna(){
 function smcAbrirSolicitacaoAcesso(){
   const baseUser = document.getElementById("smcLoginUsuario")?.value.trim() || smcUser?.email || "";
   const normalized = smcNormalizarUsuario(baseUser);
-  const usuario = normalized.ok ? normalized.usuario : "";
+  const usuario = normalized.ok ? normalized.email : "";
   smcAbrirTelaInterna("Solicitar acesso", "Solicitação interna, sem abrir nova página ou WebView.", `
     <div class="smc-spa-grid">
       <section class="smc-spa-card"><h3>Fluxo correto</h3><p>O usuário corporativo solicita acesso e aguarda aprovação. Admins e masters aprovam pela aba Gerenciar Acessos.</p><div class="smc-spa-note"><strong>Importante:</strong> e-mails pessoais são bloqueados e não geram solicitação.</div></section>
       <section class="smc-spa-card"><h3>Dados da solicitação</h3>
-        <div class="smc-spa-field"><label for="smcCadastroUsuario">Usuário ou e-mail corporativo</label><input id="smcCadastroUsuario" type="text" value="${smcEsc(usuario)}" placeholder="nome.sobrenome" autocomplete="off" autocapitalize="none" spellcheck="false"><small>O sistema aplicará ${SMC_DOMAIN} se você digitar apenas o usuário.</small></div>
+        <div class="smc-spa-field"><label for="smcCadastroUsuario">E-mail corporativo</label><input id="smcCadastroUsuario" type="email" value="${smcEsc(usuario)}" placeholder="nome.sobrenome@globaleletronics.ind.br" autocomplete="email" autocapitalize="none" spellcheck="false"><small>Digite o e-mail corporativo completo. Não use apenas o usuário.</small></div>
         <div class="smc-spa-field"><label for="smcCadastroNome">Nome</label><input id="smcCadastroNome" type="text" placeholder="Seu nome completo"></div>
         <div class="smc-spa-field"><label for="smcCadastroSetor">Setor</label><input id="smcCadastroSetor" type="text" placeholder="Ex.: Engenharia, Produção, SGQ..."></div>
         <div class="smc-spa-field"><label for="smcCadastroMotivo">Motivo</label><textarea id="smcCadastroMotivo" placeholder="Explique por que precisa acessar o SMC."></textarea></div>
@@ -334,7 +337,7 @@ async function smcEnviarSolicitacaoAcesso(){
     const { error: signUpError } = await smcAuthClient.auth.signUp({ email: normalized.email, password });
     if (signUpError && !String(signUpError.message || "").toLowerCase().includes("already")) console.warn(signUpError);
     const payload = { email: normalized.email, nome, setor, motivo, status:"pending", requested_at: smcNowIso(), rejection_reason:null };
-    const { error: requestError } = await smcAuthClient.from("access_requests").upsert(payload, { onConflict:"email" });
+    const { error: requestError } = await smcAuthClient.from("access_requests").insert(payload);
     if (requestError) throw requestError;
     if (passwordInput) passwordInput.value = "";
     await smcLogAudit("access_request_created", normalized.email, `Setor: ${setor}`);

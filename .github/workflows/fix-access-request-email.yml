@@ -101,7 +101,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ "$(cat patch-status.txt)" = "ok" ]; then
-            git rm --ignore-unmatch .github/workflows/fix-access-request-email.yml workflow-debug.txt patch-status.txt
+            git checkout -- workflow-debug.txt patch-status.txt || true
             git add smc-auth.js
             git status --short
             git diff --cached --name-only

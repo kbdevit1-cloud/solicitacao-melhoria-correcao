@@ -5,7 +5,7 @@
     "dia_abertura": "Quinta-feira",
     "hora_abertura": "14:39:15",
     "criado_em": "2026-06-18T17:39:16.43172+00:00",
-    "atualizado_em": "2026-06-18T17:41:01.738055+00:00",
+    "atualizado_em": "2026-06-18T17:41:04.229078+00:00",
     "nome": "testete",
     "area": "ADM",
     "setor_local": "teste",
@@ -18,7 +18,7 @@
     "solicitacao": "tet",
     "impacto": "Pode gerar erro",
     "observacoes": null,
-    "status": "Aguardando informação",
+    "status": "Recebido",
     "github_status": "Sincronizado no GitHub JSON",
     "possui_foto": false,
     "foto_base64": null

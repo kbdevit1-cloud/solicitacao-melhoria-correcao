@@ -24,23 +24,25 @@ jobs:
           p = Path('smc-auth.js')
           text = p.read_text(encoding='utf-8')
 
-          new_func = '''function smcNormalizarUsuario(raw){
-  let value = String(raw || "").trim().toLowerCase().replace(/\\s+/g, "");
-  if (!value) return { ok:false, message:"Informe seu e-mail corporativo." };
-  if (!value.includes("@")) {
-    return { ok:false, message:"Informe o e-mail corporativo completo, incluindo @globaleletronics.ind.br." };
-  }
-  const parts = value.split("@");
-  if (parts.length !== 2) {
-    return { ok:false, message:"E-mail corporativo inválido." };
-  }
-  const [local, domain] = parts;
-  if ("@" + domain !== SMC_DOMAIN) {
-    return { ok:false, message:"Acesso permitido apenas para e-mails corporativos da Global Eletronics." };
-  }
-  if (!/^[a-z0-9._-]{2,80}$/.test(local)) return { ok:false, message:"E-mail corporativo inválido." };
-  return { ok:true, usuario:local, email:local + SMC_DOMAIN };
-}'''
+          new_func = "\n".join([
+              'function smcNormalizarUsuario(raw){',
+              '  let value = String(raw || "").trim().toLowerCase().replace(/\\s+/g, "");',
+              '  if (!value) return { ok:false, message:"Informe seu e-mail corporativo." };',
+              '  if (!value.includes("@")) {',
+              '    return { ok:false, message:"Informe o e-mail corporativo completo, incluindo @globaleletronics.ind.br." };',
+              '  }',
+              '  const parts = value.split("@");',
+              '  if (parts.length !== 2) {',
+              '    return { ok:false, message:"E-mail corporativo inválido." };',
+              '  }',
+              '  const [local, domain] = parts;',
+              '  if ("@" + domain !== SMC_DOMAIN) {',
+              '    return { ok:false, message:"Acesso permitido apenas para e-mails corporativos da Global Eletronics." };',
+              '  }',
+              '  if (!/^[a-z0-9._-]{2,80}$/.test(local)) return { ok:false, message:"E-mail corporativo inválido." };',
+              '  return { ok:true, usuario:local, email:local + SMC_DOMAIN };',
+              '}'
+          ])
           text, count = re.subn(r'function smcNormalizarUsuario\(raw\)\{.*?\n\}\n\nfunction smcMensagemAuth', new_func + '\n\nfunction smcMensagemAuth', text, count=1, flags=re.S)
           if count != 1:
               raise SystemExit('smcNormalizarUsuario block not found')

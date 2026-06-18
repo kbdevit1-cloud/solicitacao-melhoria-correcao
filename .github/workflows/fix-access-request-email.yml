@@ -95,15 +95,29 @@ jobs:
             node --check smc-auth.js
           fi
       - name: Commit patch or diagnostics
+        shell: bash
         run: |
+          set -euxo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ "$(cat patch-status.txt)" = "ok" ]; then
             git rm --ignore-unmatch .github/workflows/fix-access-request-email.yml workflow-debug.txt patch-status.txt
             git add smc-auth.js
+            git status --short
+            git diff --cached --name-only
+            if git diff --cached --quiet; then
+              echo "No staged changes to commit."
+              exit 0
+            fi
             git commit -m "Fix access request email and RLS insert flow"
           else
             git add workflow-debug.txt patch-status.txt
+            git status --short
+            if git diff --cached --quiet; then
+              echo "No diagnostic changes to commit."
+              exit 0
+            fi
             git commit -m "Add access request workflow diagnostics"
           fi
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main

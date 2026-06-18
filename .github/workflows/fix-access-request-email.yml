@@ -119,5 +119,4 @@ jobs:
             fi
             git commit -m "Add access request workflow diagnostics"
           fi
-          git pull --rebase origin main
           git push origin HEAD:main

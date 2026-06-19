@@ -1,56 +1,38 @@
 # Política de Segurança
 
-## Versões suportadas
+## Versões Suportadas
 
-As correções de segurança serão aplicadas preferencialmente na versão mais recente do projeto.
+Atualmente, apenas a versão mais recente disponível neste repositório recebe correções e atualizações de segurança.
 
-| Versão | Suporte |
-|---|---|
-| Atual | Sim |
-| Antigas | Não garantido |
+| Versão / Branch       | Suportada |
+| --------------------- | --------- |
+| `main` / versão atual | ✅ Sim     |
+| versões antigas       | ❌ Não     |
 
-## Relatando vulnerabilidades
+## Relatando uma Vulnerabilidade
 
-Caso encontre uma falha de segurança, não publique o problema em uma issue pública.
+Caso você encontre uma falha de segurança neste projeto, não publique informações sensíveis diretamente em issues públicas.
 
-Entre em contato diretamente com o responsável pelo projeto e informe:
+Para relatar uma vulnerabilidade, entre em contato com o autor do projeto ou utilize o recurso de reporte privado de vulnerabilidade do GitHub, quando disponível.
 
-- Descrição da falha;
-- Como reproduzir o problema;
-- Impacto possível;
-- Prints ou logs, se necessário;
-- Arquivo, tela ou função afetada.
+Ao reportar, informe, se possível:
 
-## Dados sensíveis
+* descrição da falha encontrada;
+* passos para reproduzir o problema;
+* impacto esperado;
+* arquivos, telas ou trechos de código relacionados;
+* sugestão de correção, caso exista.
 
-Não devem ser publicados no repositório:
+## Análise e Correção
 
-- Senhas;
-- Tokens;
-- Chaves de API;
-- Dados de usuários;
-- E-mails corporativos sensíveis;
-- Informações internas da empresa;
-- Arquivos de banco de dados real;
-- Configurações privadas de ambiente;
-- Arquivos `.env`.
+Após o recebimento do relatório, a vulnerabilidade será analisada.
 
-## Boas práticas obrigatórias
+Se a falha for confirmada, uma correção poderá ser aplicada no projeto conforme a criticidade do problema.
 
-O projeto deve seguir as seguintes práticas:
+Relatórios falsos, incompletos ou sem informações suficientes poderão ser recusados.
 
-- Validar login e permissões sempre que aplicável;
-- Não confiar apenas em validações visuais do frontend;
-- Não armazenar senhas em texto puro;
-- Não expor chaves ou credenciais no código;
-- Usar variáveis de ambiente ou arquivos de configuração seguros;
-- Validar entradas do usuário;
-- Impedir acesso não autorizado a telas internas;
-- Manter logs sem dados sensíveis;
-- Não publicar banco de dados real no GitHub.
+## Uso Não Autorizado
 
-## Correções
+Este projeto não possui licença pública de uso.
 
-Falhas confirmadas devem ser corrigidas com prioridade.
-
-Após a correção, a alteração deve ser testada antes de ser incorporada à versão principal.
+O acesso ao código-fonte não concede permissão para copiar, modificar, distribuir, vender, reutilizar ou publicar este software, total ou parcialmente, sem autorização prévia e por escrito do autor.

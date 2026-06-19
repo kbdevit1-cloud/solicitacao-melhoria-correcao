@@ -1,6 +1,6 @@
 LICENÇA PROPRIETÁRIA - TODOS OS DIREITOS RESERVADOS
 
-Copyright (c) 2026 Kauã Devit
+Copyright (c) 2026 Kauã Devit / Global Eletronics
 
 Todos os direitos reservados.
 

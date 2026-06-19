@@ -52,14 +52,16 @@
 .smc-notification-empty{border:1px dashed rgba(255,255,255,.14);border-radius:7px;padding:14px 10px;color:#9fb7d1;font-size:11px;text-align:center}
 .planner-notifications:not(:has(.smc-notification-head))::before{content:"Notificações";display:block;padding:10px 11px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(11,31,57,.95);color:#fff;font-size:13px;font-weight:900}
 .planner-notifications:not(:has(.planner-notification)):not(:has(.smc-notification-empty))::after{content:"Sem novas demandas abertas.";display:block;margin:8px;border:1px dashed rgba(255,255,255,.14);border-radius:7px;padding:14px 10px;color:#9fb7d1;font-size:11px;text-align:center}
-.planner-notification{border:1px solid rgba(255,255,255,.12);border-left-width:6px;border-radius:7px;background:rgba(5,13,25,.78);box-shadow:0 10px 28px rgba(0,0,0,.24);padding:9px 10px}
-.planner-notification.baixa{border-left-color:#22c55e}
-.planner-notification.media{border-left-color:#f59e0b}
-.planner-notification.alta{border-left-color:#ef4444}
+.planner-notification{border:1px solid rgba(255,255,255,.16);border-radius:7px;background:rgba(5,13,25,.78);box-shadow:0 10px 28px rgba(0,0,0,.24);padding:9px 10px;transition:opacity .18s ease,filter .18s ease,transform .18s ease}
+.planner-notification.baixa{border-color:rgba(34,197,94,.55);background:linear-gradient(135deg,rgba(34,197,94,.9),rgba(10,88,54,.96))}
+.planner-notification.media{border-color:rgba(245,158,11,.62);background:linear-gradient(135deg,rgba(245,158,11,.92),rgba(130,76,6,.96))}
+.planner-notification.alta{border-color:rgba(239,68,68,.62);background:linear-gradient(135deg,rgba(239,68,68,.92),rgba(120,24,31,.96))}
 .planner-notification strong{display:block;font-size:12px;color:#fff;margin-bottom:4px}
 .planner-notification span{display:block;color:#c7d7ea;font-size:11px;line-height:1.35}
 .planner-notification small{display:block;color:#8da5bf;font-size:10px;margin-top:3px}
-.planner-notification button{margin-top:8px;padding:7px 9px;font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+.planner-notification button{margin-top:8px;padding:7px 9px;font-size:11px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.24)}
+.planner-notification.viewed{opacity:.6;filter:saturate(.55)}
+.planner-notification.viewed button,.planner-notification button:disabled{cursor:default;opacity:.75;background:rgba(0,0,0,.18)}
 .people-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
 .people-card{display:grid;gap:10px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(5,13,25,.42);padding:13px}
 .people-card strong{display:block;color:#fff}

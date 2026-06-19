@@ -108,12 +108,19 @@
     const footer = panelCard.querySelector(".footer-note");
     const tabs = document.createElement("div");
     tabs.className = "smc-panel-tabs";
-    tabs.innerHTML = `<button class="smc-panel-tab active" data-smc-panel-tab="solicitacoes">Solicitações</button><button class="smc-panel-tab" data-smc-panel-tab="planner">Tarefas / Planner</button><button class="smc-panel-tab" data-smc-panel-tab="dashboard">Dashboard</button>${isManager()?'<button class="smc-panel-tab" data-smc-panel-tab="permissoes">Permissões</button><button class="smc-panel-tab" data-smc-panel-tab="backup">Backup / Sincronização</button>':''}`;
+    tabs.innerHTML = `<button class="smc-panel-tab active" data-smc-panel-tab="solicitacoes">Solicitações</button><button class="smc-panel-tab" data-smc-panel-tab="planner">Tarefas / Planner</button><button class="smc-panel-tab" data-smc-panel-tab="dashboard">Dashboard</button><button class="smc-panel-tab" data-smc-panel-tab="notificacoes">Notificações</button>${isManager()?'<button class="smc-panel-tab" data-smc-panel-tab="pessoas">Pessoas / Direcionamento</button><button class="smc-panel-tab" data-smc-panel-tab="permissoes">Permissões</button><button class="smc-panel-tab" data-smc-panel-tab="backup">Backup / Sincronização</button>':''}`;
     panelCard.querySelector(".card-header")?.after(tabs);
     const sol = document.createElement("div"); sol.className = "smc-panel-view active"; sol.dataset.smcPanelView = "solicitacoes";
     [stats, toolbar, actions, table, footer].forEach(el => el && sol.appendChild(el));
     tabs.after(sol);
-    sol.after(panelView("planner", `<iframe class="smc-panel-iframe" src="planner.html?embedded=1&tab=board" title="Tarefas / Planner"></iframe>`), panelView("dashboard", `<iframe class="smc-panel-iframe" src="planner.html?embedded=1&tab=dashboard" title="Dashboard"></iframe>`), panelView("permissoes", `<iframe class="smc-panel-iframe" src="planner.html?embedded=1&tab=permissions" title="Permissões"></iframe>`), panelView("backup", backupHtml()));
+    sol.after(
+      panelView("planner", `<iframe class="smc-panel-iframe" src="planner.html?embedded=1&tab=board" title="Tarefas / Planner"></iframe>`),
+      panelView("dashboard", `<iframe class="smc-panel-iframe" src="planner.html?embedded=1&tab=dashboard" title="Dashboard"></iframe>`),
+      panelView("notificacoes", `<iframe class="smc-panel-iframe smc-panel-iframe-compact" src="planner.html?embedded=1&tab=notifications" title="Notificações"></iframe>`),
+      panelView("pessoas", `<iframe class="smc-panel-iframe" src="planner.html?embedded=1&tab=people" title="Pessoas / Direcionamento"></iframe>`),
+      panelView("permissoes", `<iframe class="smc-panel-iframe" src="planner.html?embedded=1&tab=permissions" title="Permissões"></iframe>`),
+      panelView("backup", backupHtml())
+    );
     tabs.querySelectorAll("[data-smc-panel-tab]").forEach(btn => btn.addEventListener("click", () => switchPanelTab(btn.dataset.smcPanelTab)));
     bindBackupButtons();
   }

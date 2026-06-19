@@ -7,6 +7,18 @@
   const RUNNING_STATUS = "Em execução";
   const DONE_STATUSES = ["Concluído", "Reprovado", "Cancelado"];
   const NOTIFICATION_STATUSES = OPEN_STATUSES.concat([RUNNING_STATUS]);
+  const TASK_TYPES = [
+    "Melhoria de processo",
+    "Correção de processo",
+    "Ajuste / edição",
+    "Solicitação de alteração",
+    "Apoio técnico",
+    "Padronização",
+    "Documentação",
+    "Melhoria em sistema interno",
+    "Firmware / arquivo técnico",
+    "Outro assunto da Engenharia de Processo"
+  ];
   const state = {
     users: [],
     permissions: [],
@@ -559,12 +571,113 @@
     });
   }
 
+  function patchAccessManager(){
+    const original = window.smcAbrirGerenciarAcessos;
+    if (typeof original !== "function" || original.__smcTaskPermissionsPatched) return;
+    window.smcAbrirGerenciarAcessos = function(){
+      const result = original.apply(this, arguments);
+      setTimeout(() => {
+        injectAccessPermissionsCard();
+        loadEngineeringContext().then(injectAccessPermissionsCard);
+      }, 80);
+      return result;
+    };
+    window.smcAbrirGerenciarAcessos.__smcTaskPermissionsPatched = true;
+  }
+
+  function accessPermissionFor(userId, taskType){
+    return state.permissions.find(p => p.user_id === userId && p.task_type === taskType && p.category === ENGINEERING_DEPARTMENT) || {};
+  }
+
+  function injectAccessPermissionsCard(){
+    const body = document.querySelector("#smcInternalOverlay .smc-internal-body");
+    const usersTable = document.getElementById("smcUsuariosTabela");
+    if (!body || !usersTable) return;
+    let card = document.getElementById("smcTaskPermissionsCard");
+    if (!card) {
+      card = document.createElement("section");
+      card.id = "smcTaskPermissionsCard";
+      card.className = "smc-spa-card";
+      usersTable.closest(".smc-spa-card")?.after(card);
+    }
+    renderAccessPermissionsCard(card);
+  }
+
+  function renderAccessPermissionsCard(card){
+    if (!card) return;
+    if (!isManager()) {
+      card.innerHTML = '<h3>Permissões de execução de tarefas</h3><div class="smc-users-empty">Apenas ADM ou Master podem gerenciar permissões.</div>';
+      return;
+    }
+    if (!state.users.length) {
+      card.innerHTML = '<h3>Permissões de execução de tarefas</h3><div class="smc-users-empty">Carregando colaboradores da Engenharia de Processo...</div>';
+      return;
+    }
+    const selectedUser = document.getElementById("smcPermUser")?.value || state.users[0]?.id || "";
+    const selectedType = document.getElementById("smcPermType")?.value || TASK_TYPES[0];
+    const permission = accessPermissionFor(selectedUser, selectedType);
+    card.innerHTML = `
+      <h3>Permissões de execução de tarefas</h3>
+      <p>Defina quem pode executar, editar, concluir, alterar responsável e adicionar membros por tipo de tarefa da Engenharia de Processo.</p>
+      <div class="smc-permission-grid">
+        <div class="smc-spa-field"><label for="smcPermUser">Colaborador</label><select id="smcPermUser">${state.users.map(u => `<option value="${esc(u.id)}" ${u.id === selectedUser ? "selected" : ""}>${esc(u.user_code || codeFromEmail(u.email))}${u.nome ? ` - ${esc(u.nome)}` : ""}</option>`).join("")}</select></div>
+        <div class="smc-spa-field"><label for="smcPermType">Tipo de tarefa</label><select id="smcPermType">${TASK_TYPES.map(t => `<option ${t === selectedType ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
+      </div>
+      <div class="permission-card">
+        ${permissionCheck("can_execute", "Pode executar", permission)}
+        ${permissionCheck("can_edit", "Pode editar", permission)}
+        ${permissionCheck("can_complete", "Pode concluir", permission)}
+        ${permissionCheck("can_change_responsible", "Pode alterar responsável", permission)}
+        ${permissionCheck("can_add_members", "Pode adicionar membros", permission)}
+        <button type="button" id="smcPermSaveBtn">Salvar permissões</button>
+        <div id="smcPermMsg" class="smc-spa-msg"></div>
+      </div>
+    `;
+    document.getElementById("smcPermUser").onchange = () => renderAccessPermissionsCard(card);
+    document.getElementById("smcPermType").onchange = () => renderAccessPermissionsCard(card);
+    document.getElementById("smcPermSaveBtn").onclick = () => saveAccessPermission(card);
+  }
+
+  function permissionCheck(field, label, permission){
+    return `<label class="permission-switch"><span>${esc(label)}</span><input type="checkbox" data-smc-perm-field="${field}" ${permission[field] ? "checked" : ""}></label>`;
+  }
+
+  async function saveAccessPermission(card){
+    if (!isManager()) return alert("Apenas ADM ou Master podem gerenciar permissões.");
+    const msg = document.getElementById("smcPermMsg");
+    const btn = document.getElementById("smcPermSaveBtn");
+    const payload = {
+      user_id: document.getElementById("smcPermUser")?.value || "",
+      task_type: document.getElementById("smcPermType")?.value || "",
+      category: ENGINEERING_DEPARTMENT,
+      can_create: false
+    };
+    document.querySelectorAll("[data-smc-perm-field]").forEach(input => { payload[input.dataset.smcPermField] = input.checked; });
+    if (!payload.user_id || !payload.task_type) return alert("Selecione colaborador e tipo de tarefa.");
+    if (msg) { msg.className = "smc-spa-msg"; msg.textContent = "Salvando permissões..."; }
+    if (btn) btn.disabled = true;
+    try {
+      const result = await api("task-permission", "PATCH", payload);
+      const saved = result.data;
+      state.permissions = state.permissions.filter(p => !(p.user_id === saved.user_id && p.task_type === saved.task_type && p.category === saved.category));
+      state.permissions.push(saved);
+      if (msg) { msg.textContent = "Permissões salvas."; msg.classList.add("ok"); }
+      renderAccessPermissionsCard(card);
+    } catch(error) {
+      if (msg) { msg.textContent = error.message || "Falha ao salvar permissões."; msg.classList.add("err"); }
+      else alert(error.message || "Falha ao salvar permissões.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function init(){
     installAuthFetchPatch();
     addResponsibleField();
     bindFormValidation();
     patchSaveFunction();
     patchLoadAndRender();
+    patchAccessManager();
     buildPanelTabs();
     loadEngineeringContext().then(() => validateResponsible(false));
     refreshRequests(true);
@@ -574,6 +687,7 @@
       bindFormValidation();
       patchSaveFunction();
       patchLoadAndRender();
+      patchAccessManager();
       buildPanelTabs();
       window.loadSolicitacoes?.();
     }, 800);

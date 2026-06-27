@@ -55,22 +55,37 @@ function smcMensagemAuth(error){
   return error?.message || "Falha na autenticação.";
 }
 
-function smcLoadSupabaseClient(){
+function smcWithTimeout(promise, ms, label) {
   return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`Timeout (${ms}ms): ${label}`)), ms);
+    promise.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); reject(e); });
+  });
+}
+
+function smcLoadSupabaseClient(){
+  return smcWithTimeout(new Promise((resolve, reject) => {
     if (window.supabase) return resolve(window.supabase);
     const existing = document.querySelector('script[data-smc-supabase="true"]');
     if (existing) {
       existing.addEventListener("load", () => resolve(window.supabase), { once:true });
-      existing.addEventListener("error", () => reject(new Error("Falha ao carregar Supabase Auth.")), { once:true });
+      existing.addEventListener("error", () => reject(new Error("Falha ao carregar Supabase CDN.")), { once:true });
       return;
     }
     const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+    // Usar unpkg como fallback alternativo ao jsdelivr
+    s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
     s.dataset.smcSupabase = "true";
-    s.onload = () => resolve(window.supabase);
-    s.onerror = () => reject(new Error("Falha ao carregar Supabase Auth."));
+    s.onload = () => { if (window.supabase) resolve(window.supabase); else reject(new Error("Supabase nao definido apos CDN carregado.")); };
+    s.onerror = () => {
+      // Fallback: tentar unpkg
+      const s2 = document.createElement("script");
+      s2.src = "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js";
+      s2.onload = () => { if (window.supabase) resolve(window.supabase); else reject(new Error("Supabase nao disponivel.")); };
+      s2.onerror = () => reject(new Error("Falha ao carregar Supabase (jsdelivr + unpkg falharam)."));
+      document.head.appendChild(s2);
+    };
     document.head.appendChild(s);
-  });
+  }), 8000, "CDN Supabase");
 }
 
 function smcSetBodyLock(){
@@ -118,22 +133,69 @@ function smcInstallStyle(){
 
 async function smcInitAuth(){
   smcInstallStyle();
-  const lib = await smcLoadSupabaseClient();
-  smcAuthClient = lib.createClient(SMC_SUPABASE_URL, SMC_SUPABASE_KEY, { auth:{ persistSession:true, autoRefreshToken:true } });
-  const { data } = await smcAuthClient.auth.getSession();
-  smcSession = data.session || null;
-  smcUser = smcSession?.user || null;
-  await smcAtualizarPerfil();
+
+  // ---- Passo 1: Carregar SDK com timeout ----
+  let lib;
+  try {
+    lib = await smcLoadSupabaseClient();
+  } catch(e) {
+    console.warn("SMC Auth: CDN falhou:", e.message);
+    smcRenderLoginProfissional();
+    return;
+  }
+
+  // ---- Passo 2: Criar cliente ----
+  try {
+    smcAuthClient = lib.createClient(SMC_SUPABASE_URL, SMC_SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    });
+  } catch(e) {
+    console.warn("SMC Auth: createClient falhou:", e.message);
+    smcRenderLoginProfissional();
+    return;
+  }
+
+  // ---- Passo 3: Obter sessao com timeout de 5s ----
+  let session = null;
+  try {
+    const { data } = await smcWithTimeout(
+      smcAuthClient.auth.getSession(),
+      5000, "getSession"
+    );
+    session = data?.session || null;
+  } catch(e) {
+    console.warn("SMC Auth: getSession timeout/falha:", e.message);
+    // Continua sem sessao - mostra login
+  }
+  smcSession = session;
+  smcUser = session?.user || null;
+
+  // ---- Passo 4: Atualizar perfil com timeout de 5s ----
+  try {
+    await smcWithTimeout(smcAtualizarPerfil(), 5000, "smcAtualizarPerfil");
+  } catch(e) {
+    console.warn("SMC Auth: smcAtualizarPerfil timeout/falha:", e.message);
+    // Perfil nao carregado - assume publico, renderiza login
+  }
+
   smcRenderAcesso();
   smcAplicarPermissoesVisuais();
-  smcAuthClient.auth.onAuthStateChange(async (_event, session) => {
-    smcSession = session || null;
-    smcUser = smcSession?.user || null;
-    await smcAtualizarPerfil();
-    smcRenderAcesso();
-    smcAplicarPermissoesVisuais();
-    if (typeof loadSolicitacoes === "function" && smcAccessStatus === "active") loadSolicitacoes();
-  });
+
+  // ---- Passo 5: Escutar mudancas de estado ----
+  try {
+    smcAuthClient.auth.onAuthStateChange(async (_event, sess) => {
+      smcSession = sess || null;
+      smcUser = smcSession?.user || null;
+      try {
+        await smcWithTimeout(smcAtualizarPerfil(), 5000, "onAuthStateChange/perfil");
+      } catch(e) { console.warn("SMC: perfil nao atualizado:", e.message); }
+      smcRenderAcesso();
+      smcAplicarPermissoesVisuais();
+      if (typeof loadSolicitacoes === "function" && smcAccessStatus === "active") loadSolicitacoes();
+    });
+  } catch(e) {
+    console.warn("SMC Auth: onAuthStateChange falhou:", e.message);
+  }
 }
 
 async function smcAtualizarPerfil(){
@@ -539,7 +601,22 @@ function smcAuthHeader(){
   return smcSession?.access_token ? { Authorization: `Bearer ${smcSession.access_token}` } : {};
 }
 
-smcInitAuth().catch(e => {
+// Timeout de emergencia: garante que a tela SEMPRE aparece em no maximo 6 segundos
+const _smcEmergencyTimer = setTimeout(() => {
+  if (!document.getElementById("smcAuthOverlay") && !document.getElementById("smcSessionPill")) {
+    console.warn("SMC: timeout de emergencia ativado - renderizando login forcado");
+    document.body.classList.remove("smc-auth-locked");
+    try { smcInstallStyle(); smcRenderLoginProfissional(); } catch(_) {}
+  }
+}, 6000);
+
+smcInitAuth().then(() => {
+  clearTimeout(_smcEmergencyTimer);
+}).catch(e => {
+  clearTimeout(_smcEmergencyTimer);
   console.error("Falha fatal no Auth:", e);
   document.body.classList.remove("smc-auth-locked");
+  if (!document.getElementById("smcAuthOverlay") && !document.getElementById("smcSessionPill")) {
+    try { smcInstallStyle(); smcRenderLoginProfissional(); } catch(_) {}
+  }
 });

@@ -62,7 +62,15 @@ function smcWithTimeout(promise, ms, label) {
   });
 }
 
-function smcLoadSupabaseClient(){
+async function smcLoadSupabaseClient(attempt = 1, maxAttempts = 3){
+  if (window.supabase) return window.supabase;
+  
+  const cdnUrls = [
+    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js",
+    "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js",
+    "https://esm.sh/@supabase/supabase-js@2/dist/umd/supabase.js"
+  ];
+  
   return smcWithTimeout(new Promise((resolve, reject) => {
     if (window.supabase) return resolve(window.supabase);
     const existing = document.querySelector('script[data-smc-supabase="true"]');
@@ -71,21 +79,32 @@ function smcLoadSupabaseClient(){
       existing.addEventListener("error", () => reject(new Error("Falha ao carregar Supabase CDN.")), { once:true });
       return;
     }
-    const s = document.createElement("script");
-    // Usar unpkg como fallback alternativo ao jsdelivr
-    s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
-    s.dataset.smcSupabase = "true";
-    s.onload = () => { if (window.supabase) resolve(window.supabase); else reject(new Error("Supabase nao definido apos CDN carregado.")); };
-    s.onerror = () => {
-      // Fallback: tentar unpkg
-      const s2 = document.createElement("script");
-      s2.src = "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js";
-      s2.onload = () => { if (window.supabase) resolve(window.supabase); else reject(new Error("Supabase nao disponivel.")); };
-      s2.onerror = () => reject(new Error("Falha ao carregar Supabase (jsdelivr + unpkg falharam)."));
-      document.head.appendChild(s2);
+    
+    let cdnIndex = 0;
+    const tryLoadCDN = () => {
+      if (cdnIndex >= cdnUrls.length) {
+        return reject(new Error(`Falha ao carregar Supabase de todos CDNs após tentativa ${attempt}/${maxAttempts}`));
+      }
+      
+      const url = cdnUrls[cdnIndex];
+      const s = document.createElement("script");
+      s.src = url;
+      s.dataset.smcSupabase = "true";
+      
+      s.onload = () => { 
+        if (window.supabase) resolve(window.supabase); 
+        else { cdnIndex++; tryLoadCDN(); }
+      };
+      s.onerror = () => { 
+        cdnIndex++; 
+        tryLoadCDN(); 
+      };
+      
+      document.head.appendChild(s);
     };
-    document.head.appendChild(s);
-  }), 8000, "CDN Supabase");
+    
+    tryLoadCDN();
+  }), 15000, "CDN Supabase");
 }
 
 function smcSetBodyLock(){
@@ -134,13 +153,28 @@ function smcInstallStyle(){
 async function smcInitAuth(){
   smcInstallStyle();
 
-  // ---- Passo 1: Carregar SDK com timeout ----
+  // ---- Passo 1: Carregar SDK com retry ----
   let lib;
-  try {
-    lib = await smcLoadSupabaseClient();
-  } catch(e) {
-    console.warn("SMC Auth: CDN falhou:", e.message);
-    smcRenderLoginProfissional();
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      lib = await smcLoadSupabaseClient(attempt, 3);
+      break;
+    } catch(e) {
+      lastError = e;
+      console.warn(`SMC Auth (tentativa ${attempt}/3): CDN falhou:`, e.message);
+      
+      if (attempt < 3) {
+        const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
+        await new Promise(r => setTimeout(r, waitMs));
+      }
+    }
+  }
+  
+  if (!lib) {
+    console.error("SMC Auth: Supabase indisponível após 3 tentativas");
+    smcRenderOfflineMode(lastError);
     return;
   }
 
@@ -151,7 +185,7 @@ async function smcInitAuth(){
     });
   } catch(e) {
     console.warn("SMC Auth: createClient falhou:", e.message);
-    smcRenderLoginProfissional();
+    smcRenderOfflineMode(e);
     return;
   }
 
@@ -266,6 +300,54 @@ function smcAplicarPermissoesVisuais(){
   document.querySelectorAll("[data-smc-master]").forEach(el => el.style.display = smcPodeGerenciarUsuarios() ? "" : "none");
   document.querySelectorAll(".adminOnly").forEach(el => el.classList.toggle("hidden", !smcPodeAdministrar()));
   document.querySelectorAll(".masterOnly").forEach(el => el.classList.toggle("hidden", !smcPodeGerenciarUsuarios()));
+}
+
+function smcRenderOfflineMode(error){
+  const overlay = document.createElement("div");
+  overlay.id = "smcAuthOverlay";
+  overlay.className = "smc-auth-overlay";
+  const errorMsg = error?.message || "Erro desconhecido";
+  overlay.innerHTML = `
+    <section class="smc-auth-shell" role="dialog" aria-modal="true" aria-label="Modo offline">
+      <div class="smc-auth-brand">
+        <div>
+          <div class="smc-auth-kicker">SMC • Modo offline</div>
+          <h2>Sistema indisponível</h2>
+          <p>O servidor de autenticação não está respondendo. Você pode:</p>
+          <div class="smc-auth-flow">
+            <div><strong>Verificar conexão</strong><span>Confirme que sua internet está ativa.</span></div>
+            <div><strong>Atualizar página</strong><span>Tente recarregar (F5) em alguns segundos.</span></div>
+            <div><strong>Usar dados locais</strong><span>Se já usou antes, dados anteriores podem estar disponíveis.</span></div>
+            <div><strong>Contatar suporte</strong><span>trainee.processo@globaleletronics.ind.br</span></div>
+          </div>
+        </div>
+        <div class="smc-auth-foot">
+          <small style="color:#ff9999">Erro: ${smcEsc(errorMsg.slice(0, 80))}</small>
+        </div>
+      </div>
+      <div class="smc-auth-panel">
+        <h3>Sem conexão com servidores</h3>
+        <p style="color:#ffcccc">A autenticação não está disponível no momento. O sistema tenta reconectar automaticamente.</p>
+        <div class="smc-auth-actions" style="margin-top:20px">
+          <button type="button" id="smcRetryBtn" class="smc-login-btn">Tentar novamente</button>
+          <button type="button" id="smcOfflinePublicBtn" class="smc-public-btn">Continuar sem login</button>
+        </div>
+        <div class="smc-auth-note" style="margin-top:20px; border-color:#ff9999; background:rgba(255,100,100,.1)">
+          <strong>Informações técnicas:</strong><br>
+          • CDN Supabase: não acessível<br>
+          • Tentativas realizadas: 3<br>
+          • Dados locais: ${localStorage.getItem("SMC_SAVES_JSON_V1") ? "disponíveis" : "não encontrados"}<br>
+          • Timestamp: ${new Date().toLocaleTimeString("pt-BR")}
+        </div>
+      </div>
+    </section>`;
+  document.body.appendChild(overlay);
+  document.getElementById("smcRetryBtn")?.addEventListener("click", () => {
+    overlay.remove();
+    smcInitAuth();
+  });
+  document.getElementById("smcOfflinePublicBtn")?.addEventListener("click", smcContinuarPublico);
+  smcSetBodyLock();
 }
 
 function smcRenderAcesso(){
